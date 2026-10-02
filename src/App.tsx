@@ -1,41 +1,63 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
-import { Header } from './components/Header';
-import { Footer } from './components/Footer';
-import { Home } from './pages/Home';
-import { Shop } from './pages/Shop';
-import { ProductDetails } from './pages/ProductDetails';
-import { Cart } from './pages/Cart';
-import { Checkout } from './pages/Checkout';
-import { OrderSuccess } from './pages/OrderSuccess';
-import { About } from './pages/About';
+import { useSearchParams, Link } from 'react-router-dom';
+import { CheckCircle2, ShoppingBag, Mail } from 'lucide-react';
 
-export const App: React.FC = () => {
+export const OrderSuccess: React.FC = () => {
+  const [searchParams] = useSearchParams();
+
+  const orderNumber = searchParams.get('order') || 'NC-CONFIRMED';
+
   return (
-    <Router>
-      <AuthProvider>
-        <CartProvider>
-          <div className="min-h-screen flex flex-col bg-brand-off-white text-brand-charcoal">
-            <Header />
-            <main className="flex-grow">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/shop" element={<Shop />} />
-                <Route path="/product/:id" element={<ProductDetails />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/about" element={<About />} />
-              </Routes>
-            </main>
-            <Footer />
+    <div className="max-w-[1280px] mx-auto px-4 py-16">
+      <div className="max-w-md mx-auto bg-white border border-brand-muted-sage/40 p-8 text-center">
+
+        {/* Success Icon */}
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-brand-light-green text-brand-emerald mx-auto flex items-center justify-center border border-brand-muted-sage/40">
+            <CheckCircle2 className="w-10 h-10" />
           </div>
-        </CartProvider>
-      </AuthProvider>
-    </Router>
+        </div>
+
+        {/* Heading */}
+        <div className="space-y-3 mb-6">
+          <span className="text-xs font-bold tracking-widest text-brand-emerald uppercase">
+            Order Confirmed
+          </span>
+
+          <h1 className="text-2xl font-serif font-semibold text-brand-deep-emerald">
+            Thank you for your order!
+          </h1>
+
+          <p className="text-xs font-semibold text-brand-charcoal/80">
+            Order Reference:{' '}
+            <span className="text-brand-deep-emerald font-mono">
+              {orderNumber}
+            </span>
+          </p>
+        </div>
+
+        {/* Email Confirmation */}
+        <div className="p-4 bg-brand-off-white border border-brand-muted-sage/30 text-xs text-brand-charcoal/70 text-left mb-6">
+          <div className="flex items-center space-x-2 font-semibold text-brand-deep-emerald mb-2">
+            <Mail className="w-4 h-4" />
+            <span>Confirmation email sent</span>
+          </div>
+
+          <p className="text-[11px] leading-relaxed">
+            We've sent your order summary to the email address you provided.
+          </p>
+        </div>
+
+        {/* Continue Shopping */}
+        <Link
+          to="/shop"
+          className="inline-flex items-center justify-center space-x-2 bg-brand-deep-emerald text-white px-6 py-3 text-xs uppercase tracking-wider font-semibold hover:bg-brand-emerald transition-colors"
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span>Continue Shopping</span>
+        </Link>
+
+      </div>
+    </div>
   );
 };
-
-export default App;
