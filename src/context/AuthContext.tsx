@@ -9,18 +9,26 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  continueAsGuest: () => Promise<User>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchProfile = async (userId: string, email: string, name?: string, avatar?: string) => {
+  const fetchProfile = async (
+    userId: string,
+    email: string,
+    name?: string,
+    avatar?: string
+  ) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -46,11 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!insertError && insertedData) {
           setProfile(insertedData);
+
           // Trigger welcome email via Edge Function
           triggerWelcomeEmail(insertedData);
         }
       } else if (data) {
         setProfile(data);
+
         // Check if welcome email was never sent
         if (!data.welcome_email_sent) {
           triggerWelcomeEmail(data);
@@ -72,13 +82,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (!error) {
-        // Update welcome_email_sent to true in profiles
+        // Mark welcome email as sent
         await supabase
           .from('profiles')
           .update({ welcome_email_sent: true })
           .eq('id', userProfile.id);
-        
-        setProfile(prev => prev ? { ...prev, welcome_email_sent: true } : null);
+
+        setProfile((prev) =>
+          prev ? { ...prev, welcome_email_sent: true } : null
+        );
       }
     } catch (e) {
       console.error('Failed to dispatch welcome email invoke:', e);
@@ -90,7 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+
+      // Only create/fetch a profile for normal Google/authenticated users.
+      // Anonymous users will create their profile during guest checkout,
+      // after the customer provides their name and email.
+      if (session?.user && !session.user.is_anonymous) {
         fetchProfile(
           session.user.id,
           session.user.email || '',
@@ -98,23 +114,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           session.user.user_metadata?.avatar_url
         );
       }
+
       setLoading(false);
     });
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+
+      // Anonymous users should NOT have a profile automatically created.
+      // Their profile is created during checkout with the customer's
+      // actual name and email.
+      if (session?.user && !session.user.is_anonymous) {
         await fetchProfile(
           session.user.id,
           session.user.email || '',
           session.user.user_metadata?.full_name,
           session.user.user_metadata?.avatar_url
         );
-      } else {
+      } else if (!session?.user) {
         setProfile(null);
       }
+
       setLoading(false);
     });
 
@@ -130,18 +154,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redirectTo: `${window.location.origin}`,
       },
     });
+
     if (error) {
       console.error('OAuth Login Error:', error.message);
       throw error;
     }
   };
 
+  const continueAsGuest = async (): Promise<User> => {
+    const { data, error } = await supabase.auth.signInAnonymously();
+
+    if (error || !data.user) {
+      console.error('Guest checkout error:', error?.message);
+
+      throw new Error('Could not start guest checkout. Please try again.');
+    }
+
+    return data.user;
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
+    setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        signInWithGoogle,
+        continueAsGuest,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -149,8 +197,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
