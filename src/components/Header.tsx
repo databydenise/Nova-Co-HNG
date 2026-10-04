@@ -111,7 +111,7 @@ export const Header: React.FC = () => {
                   />
                 ) : (
                   <div className="w-7 h-7 bg-brand-light-green text-brand-deep-emerald flex items-center justify-center text-xs font-semibold rounded-full">
-                    {user.email?.[0].toUpperCase() || 'U'}
+                    {user?.email?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
                 <span className="hidden lg:inline text-xs font-medium text-brand-charcoal truncate max-w-[100px]">
