@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export type CartProduct = {
   id: string;
@@ -23,7 +23,7 @@ export type CartItem = CartProduct & {
 
 type CartContextType = {
   cart: CartItem[];
-  addToCart: (product: CartProduct, quantity?: number) => void;
+  addToCart: (product: CartProduct) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   totalItems: number;
@@ -37,8 +37,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
 
   async function loadCart(currentUserId: string) {
-    console.log('🛒 LOAD CART:', currentUserId);
-
     const { data, error } = await supabase
       .from('cart_items')
       .select(`
@@ -54,7 +52,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .eq('user_id', currentUserId);
 
     if (error) {
-      console.error('❌ FAILED TO LOAD CART:', error);
+      console.error('Failed to load cart:', error);
       return;
     }
 
@@ -84,8 +82,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const currentUserId = session?.user?.id ?? null;
 
-      console.log('👤 INITIAL USER:', currentUserId);
-
       setUserId(currentUserId);
 
       if (currentUserId) {
@@ -102,8 +98,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUserId = session?.user?.id ?? null;
 
-      console.log('🔐 AUTH STATE:', currentUserId);
-
       setUserId(currentUserId);
 
       if (currentUserId) {
@@ -119,17 +113,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function addToCart(product: CartProduct, quantity = 1) {
-    console.log('🛒 ADD TO CART CALLED:', {
-      productId: product.id,
-      productName: product.name,
-      quantity,
-      userId,
-    });
+  // Realtime cart synchronization
+  useEffect(() => {
+    if (!userId) return;
 
+    const channel = supabase
+      .channel(`cart-sync-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cart_items',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadCart(userId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  async function addToCart(product: CartProduct) {
     if (!userId) {
-      console.log('⚠️ NO USER ID — USING LOCAL CART');
-
       setCart((currentCart) => {
         const existingItem = currentCart.find(
           (item) => item.id === product.id
@@ -140,47 +150,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item.id === product.id
               ? {
                   ...item,
-                  quantity: Math.min(
-                    item.quantity + quantity,
-                    item.stock
-                  ),
+                  quantity: Math.min(item.quantity + 1, item.stock),
                 }
               : item
           );
         }
 
-        return [
-          ...currentCart,
-          {
-            ...product,
-            quantity: Math.min(quantity, product.stock),
-          },
-        ];
+        return [...currentCart, { ...product, quantity: 1 }];
       });
 
       return;
     }
 
-    console.log('👤 USER ID FOUND — SAVING TO SUPABASE:', userId);
-
-    const existingItem = cart.find(
-      (item) => item.id === product.id
-    );
+    const existingItem = cart.find((item) => item.id === product.id);
 
     const newQuantity = existingItem
-      ? Math.min(
-          existingItem.quantity + quantity,
-          product.stock
-        )
-      : Math.min(quantity, product.stock);
+      ? Math.min(existingItem.quantity + 1, product.stock)
+      : 1;
 
-    console.log('📦 UPSERTING:', {
-      userId,
-      productId: product.id,
-      newQuantity,
-    });
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('cart_items')
       .upsert(
         {
@@ -192,21 +180,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         {
           onConflict: 'user_id,product_id',
         }
-      )
-      .select();
-
-    console.log('🛒 CART UPSERT RESULT:', {
-      data,
-      error,
-    });
+      );
 
     if (error) {
-      console.error('❌ CART UPSERT FAILED:', error);
-      alert(`Cart save failed: ${error.message}`);
+      console.error('Failed to add item to cart:', error);
       return;
     }
-
-    console.log('✅ CART SAVED:', data);
 
     setCart((currentCart) => {
       const existing = currentCart.find(
@@ -216,21 +195,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         return currentCart.map((item) =>
           item.id === product.id
-            ? {
-                ...item,
-                quantity: newQuantity,
-              }
+            ? { ...item, quantity: newQuantity }
             : item
         );
       }
 
-      return [
-        ...currentCart,
-        {
-          ...product,
-          quantity: newQuantity,
-        },
-      ];
+      return [...currentCart, { ...product, quantity: newQuantity }];
     });
   }
 
@@ -239,6 +209,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCart((currentCart) =>
         currentCart.filter((item) => item.id !== productId)
       );
+
       return;
     }
 
@@ -249,7 +220,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .eq('product_id', productId);
 
     if (error) {
-      console.error('❌ FAILED TO REMOVE CART ITEM:', error);
+      console.error('Failed to remove item from cart:', error);
       return;
     }
 
@@ -264,9 +235,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const item = cart.find(
-      (cartItem) => cartItem.id === productId
-    );
+    const item = cart.find((cartItem) => cartItem.id === productId);
 
     if (!item) return;
 
@@ -283,6 +252,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : cartItem
         )
       );
+
       return;
     }
 
@@ -296,7 +266,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .eq('product_id', productId);
 
     if (error) {
-      console.error('❌ FAILED TO UPDATE CART:', error);
+      console.error('Failed to update cart quantity:', error);
       return;
     }
 
@@ -320,8 +290,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const subtotal = useMemo(
     () =>
       cart.reduce(
-        (total, item) =>
-          total + Number(item.price) * item.quantity,
+        (total, item) => total + Number(item.price) * item.quantity,
         0
       ),
     [cart]

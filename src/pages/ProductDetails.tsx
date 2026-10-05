@@ -16,6 +16,7 @@ export const ProductDetails: React.FC = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) return;
+
       try {
         const { data, error } = await supabase
           .from('products')
@@ -37,14 +38,24 @@ export const ProductDetails: React.FC = () => {
   }, [id]);
 
   if (loading) {
-    return <div className="py-24 text-center text-sm text-brand-charcoal/60">Loading product details...</div>;
+    return (
+      <div className="py-24 text-center text-sm text-brand-charcoal/60">
+        Loading product details...
+      </div>
+    );
   }
 
   if (!product) {
     return (
       <div className="max-w-[1280px] mx-auto px-4 py-16 text-center space-y-4">
-        <h2 className="text-2xl font-serif text-brand-deep-emerald">Product Not Found</h2>
-        <Link to="/shop" className="text-xs uppercase font-semibold text-brand-emerald underline">
+        <h2 className="text-2xl font-serif text-brand-deep-emerald">
+          Product Not Found
+        </h2>
+
+        <Link
+          to="/shop"
+          className="text-xs uppercase font-semibold text-brand-emerald underline"
+        >
           Return to shop
         </Link>
       </div>
@@ -52,21 +63,24 @@ export const ProductDetails: React.FC = () => {
   }
 
   const handleAddToCart = () => {
-    addToCart(product, quantity);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  };
+    document.title = 'TEST-CLICK-WORKED';
 
+   alert('TEST CLICK WORKED');
+
+   setAdded(true);
+  };
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      
       {/* Back Navigation */}
-      <Link to="/shop" className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-brand-charcoal/70 hover:text-brand-deep-emerald">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Collection
+      <Link
+        to="/shop"
+        className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-brand-charcoal/70 hover:text-brand-deep-emerald"
+      >
+        <ArrowLeft className="w-4 h-4 mr-1" />
+        Back to Collection
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16 items-start">
-        
         {/* Product Image Gallery */}
         <div className="bg-white border border-brand-muted-sage/30 p-2">
           <div className="aspect-[4/5] bg-brand-off-white overflow-hidden">
@@ -84,9 +98,11 @@ export const ProductDetails: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-widest text-brand-emerald">
               {product.category}
             </span>
+
             <h1 className="text-3xl font-serif text-brand-deep-emerald font-semibold mt-1">
               {product.name}
             </h1>
+
             <p className="text-2xl font-semibold text-brand-deep-emerald mt-3">
               ₦{product.price.toLocaleString()}
             </p>
@@ -98,17 +114,27 @@ export const ProductDetails: React.FC = () => {
 
           <div className="space-y-4">
             <div className="flex items-center space-x-2 text-xs text-brand-charcoal/70">
-              <span className="font-semibold text-brand-charcoal">Availability:</span>
+              <span className="font-semibold text-brand-charcoal">
+                Availability:
+              </span>
+
               {product.stock > 0 ? (
-                <span className="text-brand-emerald font-semibold">In Stock ({product.stock} available)</span>
+                <span className="text-brand-emerald font-semibold">
+                  In Stock ({product.stock} available)
+                </span>
               ) : (
-                <span className="text-red-600 font-semibold">Out of Stock</span>
+                <span className="text-red-600 font-semibold">
+                  Out of Stock
+                </span>
               )}
             </div>
 
             {/* Quantity Selector */}
             <div className="flex items-center space-x-4">
-              <label className="text-xs uppercase font-semibold text-brand-charcoal">Quantity:</label>
+              <label className="text-xs uppercase font-semibold text-brand-charcoal">
+                Quantity:
+              </label>
+
               <div className="flex items-center border border-brand-muted-sage">
                 <button
                   type="button"
@@ -117,12 +143,16 @@ export const ProductDetails: React.FC = () => {
                 >
                   -
                 </button>
+
                 <span className="px-4 py-1 text-xs font-semibold text-brand-charcoal min-w-[2rem] text-center">
                   {quantity}
                 </span>
+
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                  onClick={() =>
+                    setQuantity((q) => Math.min(product.stock, q + 1))
+                  }
                   className="px-3 py-1 bg-brand-off-white text-brand-charcoal hover:bg-brand-muted-sage/20 text-sm font-bold"
                 >
                   +
@@ -132,8 +162,9 @@ export const ProductDetails: React.FC = () => {
 
             {/* Add To Cart CTA */}
             <button
+              type="button"
               onClick={handleAddToCart}
-              disabled={product.stock <= 0}
+              disabled={false}
               className={`w-full py-3.5 px-6 text-xs uppercase tracking-widest font-semibold transition-all flex items-center justify-center space-x-2 rounded-none border ${
                 added
                   ? 'bg-brand-emerald text-white border-brand-emerald'
@@ -158,16 +189,21 @@ export const ProductDetails: React.FC = () => {
           <div className="pt-4 space-y-2 border-t border-brand-muted-sage/30 text-xs text-brand-charcoal/70">
             <div className="flex items-center space-x-2">
               <Truck className="w-4 h-4 text-brand-emerald" />
-              <span>Standard Lagos delivery in 1–2 business days. Nationwide in 3–5 days.</span>
+              <span>
+                Standard Lagos delivery in 1–2 business days. Nationwide in
+                3–5 days.
+              </span>
             </div>
+
             <div className="flex items-center space-x-2">
               <Shield className="w-4 h-4 text-brand-emerald" />
-              <span>Quality guaranteed. Authentic craftsmanship and premium fabrics.</span>
+              <span>
+                Quality guaranteed. Authentic craftsmanship and premium
+                fabrics.
+              </span>
             </div>
           </div>
-
         </div>
-
       </div>
     </div>
   );
