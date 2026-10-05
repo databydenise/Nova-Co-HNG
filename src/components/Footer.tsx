@@ -32,9 +32,10 @@ export const Footer: React.FC = () => {
             <h4 className="text-xs uppercase tracking-widest font-semibold text-brand-muted-sage mb-4">Information</h4>
             <ul className="space-y-2 text-sm">
               <li><Link to="/about" className="hover:underline">Our Story</Link></li>
+              <li><Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:underline">Terms of Service</Link></li>
               <li><span className="text-white/60">Shipping & Delivery (Lagos & Nationwide)</span></li>
               <li><span className="text-white/60">Care Guide</span></li>
-              <li><span className="text-white/60">Internship Project MVP</span></li>
             </ul>
           </div>
 
