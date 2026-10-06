@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Check, ShoppingBag, Truck, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Product } from '../types';
-import { useCart } from '../context/CartContext';
 
 export const ProductDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,8 +10,7 @@ export const ProductDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const { addToCart } = useCart();
-
+  
   useEffect(() => {
     const fetchProduct = async () => {
       if (!id) return;

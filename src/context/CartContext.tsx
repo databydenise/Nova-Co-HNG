@@ -26,6 +26,7 @@ type CartContextType = {
   addToCart: (product: CartProduct, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
   totalItems: number;
   subtotal: number;
 };
@@ -312,6 +313,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  async function clearCart() {
+    if (!userId) {
+      setCart([]);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ FAILED TO CLEAR CART:', error);
+      return;
+    }
+
+    setCart([]);
+  }
+
   const totalItems = useMemo(
     () => cart.reduce((total, item) => total + item.quantity, 0),
     [cart]
@@ -334,6 +354,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
+        clearCart,
         totalItems,
         subtotal,
       }}
@@ -352,3 +373,4 @@ export function useCart() {
 
   return context;
 }
+

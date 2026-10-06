@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, ArrowRight, UserRound } from 'lucide-react';
+import {
+  ShieldCheck,
+  Lock,
+  ArrowRight,
+  UserRound,
+} from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../lib/supabase';
 
 export const Checkout: React.FC = () => {
-  const { user, profile, signInWithGoogle, continueAsGuest } = useAuth();
+  const {
+    user,
+    profile,
+    signInWithGoogle,
+    continueAsGuest,
+  } = useAuth();
 
   const { cart, subtotal, clearCart } = useCart();
+
   const navigate = useNavigate();
 
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -57,7 +69,9 @@ export const Checkout: React.FC = () => {
         }
 
         // Basic email validation
-        const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+        const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          trimmedEmail
+        );
 
         if (!emailIsValid) {
           throw new Error('Please enter a valid email address.');
@@ -76,12 +90,15 @@ export const Checkout: React.FC = () => {
          * The orders table requires user_id to reference profiles.id.
          * Therefore, create the guest's profile before creating the order.
          */
-        const { data: existingGuestProfile, error: guestProfileFetchError } =
-          await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', checkoutUser.id)
-            .maybeSingle();
+
+        const {
+          data: existingGuestProfile,
+          error: guestProfileFetchError,
+        } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', checkoutUser.id)
+          .maybeSingle();
 
         if (guestProfileFetchError) {
           throw new Error(
@@ -123,7 +140,9 @@ export const Checkout: React.FC = () => {
        */
 
       if (!checkoutUser) {
-        throw new Error('Could not start checkout. Please try again.');
+        throw new Error(
+          'Could not start checkout. Please try again.'
+        );
       }
 
       /*
@@ -132,7 +151,8 @@ export const Checkout: React.FC = () => {
        * ------------------------------------------------------------
        */
 
-      const productIds = cart.map((item) => item.product.id);
+      // CartItem is already the product itself plus quantity.
+      const productIds = cart.map((item) => item.id);
 
       const { data: dbProducts, error: prodErr } = await supabase
         .from('products')
@@ -154,17 +174,21 @@ export const Checkout: React.FC = () => {
       let calculatedTotal = 0;
 
       const verifiedItems = cart.map((cartItem) => {
-        const fresh = dbProducts.find((p) => p.id === cartItem.product.id);
+        const fresh = dbProducts.find(
+          (p) => p.id === cartItem.id
+        );
 
-        const unitPrice = fresh ? fresh.price : cartItem.product.price;
+        const unitPrice = fresh
+          ? fresh.price
+          : cartItem.price;
 
         calculatedTotal += unitPrice * cartItem.quantity;
 
         return {
-          product_id: cartItem.product.id,
+          product_id: cartItem.id,
           quantity: cartItem.quantity,
           unit_price: unitPrice,
-          name: fresh?.name || cartItem.product.name,
+          name: fresh?.name || cartItem.name,
         };
       });
 
@@ -174,7 +198,9 @@ export const Checkout: React.FC = () => {
        * ------------------------------------------------------------
        */
 
-      const orderNumber = `NC-${Math.floor(100000 + Math.random() * 900000)}`;
+      const orderNumber = `NC-${Math.floor(
+        100000 + Math.random() * 900000
+      )}`;
 
       /*
        * ------------------------------------------------------------
@@ -182,23 +208,26 @@ export const Checkout: React.FC = () => {
        * ------------------------------------------------------------
        */
 
-      const { data: orderData, error: orderErr } = await supabase
-        .from('orders')
-        .insert([
-          {
-            user_id: checkoutUser.id,
-            order_number: orderNumber,
-            total_amount: calculatedTotal,
-            status: 'Confirmed',
-          },
-        ])
-        .select()
-        .single();
+      const { data: orderData, error: orderErr } =
+        await supabase
+          .from('orders')
+          .insert([
+            {
+              user_id: checkoutUser.id,
+              order_number: orderNumber,
+              total_amount: calculatedTotal,
+              status: 'Confirmed',
+            },
+          ])
+          .select()
+          .single();
 
       if (orderErr || !orderData) {
         console.error('Order creation error:', orderErr);
 
-        throw new Error('Failed to record order. Please try again.');
+        throw new Error(
+          'Failed to record order. Please try again.'
+        );
       }
 
       /*
@@ -219,9 +248,14 @@ export const Checkout: React.FC = () => {
         .insert(orderItemsToInsert);
 
       if (itemsErr) {
-        console.error('Error recording order items:', itemsErr);
+        console.error(
+          'Error recording order items:',
+          itemsErr
+        );
 
-        throw new Error('Your order could not be completed. Please try again.');
+        throw new Error(
+          'Your order could not be completed. Please try again.'
+        );
       }
 
       /*
@@ -259,14 +293,15 @@ export const Checkout: React.FC = () => {
        * ------------------------------------------------------------
        */
 
-      clearCart();
+      await clearCart();
 
       navigate(`/order-success?order=${orderNumber}`);
     } catch (err: any) {
       console.error('Checkout error:', err);
 
       setErrorMessage(
-        err.message || 'An unexpected error occurred during checkout.'
+        err.message ||
+          'An unexpected error occurred during checkout.'
       );
     } finally {
       setPlacingOrder(false);
@@ -319,7 +354,9 @@ export const Checkout: React.FC = () => {
                 id="customer-name"
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onChange={(e) =>
+                  setCustomerName(e.target.value)
+                }
                 placeholder="Enter your full name"
                 className="w-full border border-brand-muted-sage/40 px-4 py-3 text-sm text-brand-charcoal outline-none focus:border-brand-emerald"
               />
@@ -338,7 +375,9 @@ export const Checkout: React.FC = () => {
                 id="customer-email"
                 type="email"
                 value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
+                onChange={(e) =>
+                  setCustomerEmail(e.target.value)
+                }
                 placeholder="you@example.com"
                 className="w-full border border-brand-muted-sage/40 px-4 py-3 text-sm text-brand-charcoal outline-none focus:border-brand-emerald"
               />
@@ -350,8 +389,8 @@ export const Checkout: React.FC = () => {
 
             {/* Demo notice */}
             <div className="bg-brand-light-green p-3 border border-brand-muted-sage/30 text-[11px] text-brand-deep-emerald font-medium">
-              Note: This is a demonstration internship storefront. No real money
-              will be charged.
+              Note: This is a demonstration internship storefront.
+              No real money will be charged.
             </div>
 
             {/* Error */}
@@ -368,18 +407,24 @@ export const Checkout: React.FC = () => {
               className="w-full bg-brand-deep-emerald text-white py-4 px-6 text-xs font-semibold uppercase tracking-widest hover:bg-brand-emerald transition-all flex items-center justify-center space-x-2 rounded-none disabled:opacity-50"
             >
               <span>
-                {placingOrder ? 'Placing Order...' : 'Continue as Guest'}
+                {placingOrder
+                  ? 'Placing Order...'
+                  : 'Continue as Guest'}
               </span>
 
-              {!placingOrder && <ArrowRight className="w-4 h-4" />}
+              {!placingOrder && (
+                <ArrowRight className="w-4 h-4" />
+              )}
             </button>
 
             {/* Google Option */}
             <div className="flex items-center gap-3">
               <div className="h-px bg-brand-muted-sage/30 flex-1" />
+
               <span className="text-[10px] uppercase tracking-widest text-brand-charcoal/50">
                 Or
               </span>
+
               <div className="h-px bg-brand-muted-sage/30 flex-1" />
             </div>
 
@@ -399,29 +444,34 @@ export const Checkout: React.FC = () => {
             </h2>
 
             <div className="divide-y divide-brand-off-white max-h-80 overflow-y-auto">
-              {cart.map(({ product, quantity }) => (
+              {cart.map((item) => (
                 <div
-                  key={product.id}
+                  key={item.id}
                   className="py-3 flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center space-x-3">
                     <img
-                      src={product.image_url}
-                      alt={product.name}
+                      src={item.image_url || ''}
+                      alt={item.name}
                       className="w-12 h-14 object-cover border border-brand-muted-sage/30"
                     />
 
                     <div>
                       <p className="font-semibold text-brand-charcoal">
-                        {product.name}
+                        {item.name}
                       </p>
 
-                      <p className="text-brand-charcoal/60">Qty: {quantity}</p>
+                      <p className="text-brand-charcoal/60">
+                        Qty: {item.quantity}
+                      </p>
                     </div>
                   </div>
 
                   <span className="font-semibold text-brand-deep-emerald">
-                    ₦{(product.price * quantity).toLocaleString()}
+                    ₦
+                    {(
+                      item.price * item.quantity
+                    ).toLocaleString()}
                   </span>
                 </div>
               ))}
@@ -430,6 +480,7 @@ export const Checkout: React.FC = () => {
             <div className="border-t border-brand-off-white pt-4 space-y-2 text-xs">
               <div className="flex justify-between text-brand-charcoal/80">
                 <span>Subtotal</span>
+
                 <span className="font-semibold">
                   ₦{subtotal.toLocaleString()}
                 </span>
@@ -437,25 +488,34 @@ export const Checkout: React.FC = () => {
 
               <div className="flex justify-between text-brand-charcoal/80">
                 <span>Shipping</span>
-                <span className="text-brand-emerald font-semibold">FREE</span>
+
+                <span className="text-brand-emerald font-semibold">
+                  FREE
+                </span>
               </div>
 
               <div className="flex justify-between text-sm font-bold text-brand-deep-emerald border-t border-brand-off-white pt-2">
                 <span>Total Amount</span>
-                <span>₦{subtotal.toLocaleString()}</span>
+
+                <span>
+                  ₦{subtotal.toLocaleString()}
+                </span>
               </div>
             </div>
 
             <div className="pt-2 flex items-center justify-center space-x-2 text-[11px] text-brand-charcoal/60">
               <ShieldCheck className="w-4 h-4 text-brand-emerald" />
+
               <span>Encrypted Order Processing</span>
             </div>
           </div>
         </div>
       ) : (
-        /* ============================================================
-           GOOGLE AUTHENTICATED CHECKOUT
-           ============================================================ */
+        /*
+         * ============================================================
+         * GOOGLE AUTHENTICATED CHECKOUT
+         * ============================================================
+         */
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Customer Details */}
@@ -469,7 +529,9 @@ export const Checkout: React.FC = () => {
                 {profile?.full_name || 'Valued Customer'}
               </p>
 
-              <p className="text-xs text-brand-charcoal/70">{user?.email}</p>
+              <p className="text-xs text-brand-charcoal/70">
+                {user?.email}
+              </p>
             </div>
 
             <div className="border-b border-brand-off-white pb-4 space-y-2">
@@ -478,12 +540,13 @@ export const Checkout: React.FC = () => {
               </h2>
 
               <p className="text-xs text-brand-charcoal/80 leading-relaxed">
-                Standard Doorstep Delivery across Lagos & Major Nigerian Cities.
+                Standard Doorstep Delivery across Lagos & Major
+                Nigerian Cities.
               </p>
 
               <div className="bg-brand-light-green p-3 border border-brand-muted-sage/30 text-[11px] text-brand-deep-emerald font-medium">
-                Note: This is a demonstration internship storefront. No real
-                money will be charged.
+                Note: This is a demonstration internship storefront.
+                No real money will be charged.
               </div>
             </div>
 
@@ -498,9 +561,15 @@ export const Checkout: React.FC = () => {
               disabled={placingOrder}
               className="w-full bg-brand-deep-emerald text-white py-4 px-6 text-xs font-semibold uppercase tracking-widest hover:bg-brand-emerald transition-all flex items-center justify-center space-x-2 rounded-none disabled:opacity-50"
             >
-              <span>{placingOrder ? 'Placing Order...' : 'Place Order'}</span>
+              <span>
+                {placingOrder
+                  ? 'Placing Order...'
+                  : 'Place Order'}
+              </span>
 
-              {!placingOrder && <ArrowRight className="w-4 h-4" />}
+              {!placingOrder && (
+                <ArrowRight className="w-4 h-4" />
+              )}
             </button>
           </div>
 
@@ -511,29 +580,34 @@ export const Checkout: React.FC = () => {
             </h2>
 
             <div className="divide-y divide-brand-off-white max-h-80 overflow-y-auto">
-              {cart.map(({ product, quantity }) => (
+              {cart.map((item) => (
                 <div
-                  key={product.id}
+                  key={item.id}
                   className="py-3 flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center space-x-3">
                     <img
-                      src={product.image_url}
-                      alt={product.name}
+                      src={item.image_url || ''}
+                      alt={item.name}
                       className="w-12 h-14 object-cover border border-brand-muted-sage/30"
                     />
 
                     <div>
                       <p className="font-semibold text-brand-charcoal">
-                        {product.name}
+                        {item.name}
                       </p>
 
-                      <p className="text-brand-charcoal/60">Qty: {quantity}</p>
+                      <p className="text-brand-charcoal/60">
+                        Qty: {item.quantity}
+                      </p>
                     </div>
                   </div>
 
                   <span className="font-semibold text-brand-deep-emerald">
-                    ₦{(product.price * quantity).toLocaleString()}
+                    ₦
+                    {(
+                      item.price * item.quantity
+                    ).toLocaleString()}
                   </span>
                 </div>
               ))}
@@ -542,6 +616,7 @@ export const Checkout: React.FC = () => {
             <div className="border-t border-brand-off-white pt-4 space-y-2 text-xs">
               <div className="flex justify-between text-brand-charcoal/80">
                 <span>Subtotal</span>
+
                 <span className="font-semibold">
                   ₦{subtotal.toLocaleString()}
                 </span>
@@ -549,17 +624,24 @@ export const Checkout: React.FC = () => {
 
               <div className="flex justify-between text-brand-charcoal/80">
                 <span>Shipping</span>
-                <span className="text-brand-emerald font-semibold">FREE</span>
+
+                <span className="text-brand-emerald font-semibold">
+                  FREE
+                </span>
               </div>
 
               <div className="flex justify-between text-sm font-bold text-brand-deep-emerald border-t border-brand-off-white pt-2">
                 <span>Total Amount</span>
-                <span>₦{subtotal.toLocaleString()}</span>
+
+                <span>
+                  ₦{subtotal.toLocaleString()}
+                </span>
               </div>
             </div>
 
             <div className="pt-2 flex items-center justify-center space-x-2 text-[11px] text-brand-charcoal/60">
               <ShieldCheck className="w-4 h-4 text-brand-emerald" />
+
               <span>Encrypted Order Processing</span>
             </div>
           </div>
